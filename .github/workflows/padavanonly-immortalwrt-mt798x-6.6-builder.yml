@@ -23,7 +23,7 @@ env:
   CONFIG_FILE: padavanonly-immortalwrt-mt798x-6.6.config
   DIY_P1_SH: diy-part1.sh
   DIY_P2_SH: diy-part5-6.6.sh
-  UPLOAD_BIN_DIR: false
+  UPLOAD_BIN_DIR: true
   UPLOAD_FIRMWARE: true
   UPLOAD_RELEASE: true
   FIRMWARE_TAG: padavanonly-237-mt798x-6.6
