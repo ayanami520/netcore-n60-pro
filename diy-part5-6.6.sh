@@ -29,7 +29,17 @@ echo "============================================================"
 echo "[diy-0] 修改默认 LAN 地址为 192.168.6.1 ..."
 if [ -f package/base-files/files/bin/config_generate ]; then
 	sed -i 's/192\.168\.1\.1/192.168.6.1/g' package/base-files/files/bin/config_generate
-	echo "[diy-0] 结果：$(grep -n 'lan) ipad=' package/base-files/files/bin/config_generate || echo '未找到目标行，请检查')"
+	# 注意：237 / ImmortalWrt 源码的默认 LAN 本来就是 192.168.6.1，
+	#       所以上面这条 sed 命中 0 处属于正常现象（不是失败）。
+	#       自检必须查「默认 LAN 定义」（ipad=${ipaddr:-...}），
+	#       旧写法 grep 'lan) ipad=' 在该文件里永远匹配不到，会产生误报。
+	echo "[diy-0] 当前默认 LAN 定义："
+	grep -nF 'ipad=${ipaddr' package/base-files/files/bin/config_generate || echo "[diy-0] !! 未找到默认 LAN 定义，请人工检查"
+	if grep -qF 'ipad=${ipaddr:-"192.168.6.1"}' package/base-files/files/bin/config_generate; then
+		echo "[diy-0] 确认：默认 LAN 地址为 192.168.6.1"
+	else
+		echo "[diy-0] !! 警告：未确认默认 LAN 为 192.168.6.1，请人工核对上面的输出"
+	fi
 else
 	echo "[diy-0] !! 警告：config_generate 不存在，LAN 地址未修改"
 fi
