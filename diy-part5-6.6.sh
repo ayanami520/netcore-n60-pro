@@ -123,5 +123,45 @@ echo "[diy-5] 软件源内容："
 cat files/etc/opkg/distfeeds.conf
 
 echo "============================================================"
+# ============================================================
+# 开关 6：★ 去掉 helloworld 源对 mihomo / v2ray-geoip 的强制依赖
+#
+#   背景：helloworld 源的 feeds/helloworld/luci-app-ssr-plus/Makefile 里有：
+#
+#       config PACKAGE_luci-app-ssr-plus_INCLUDE_Mihomo
+#           bool "Include Mihomo (Clash Support)"
+#           select PACKAGE_mihomo
+#           select PACKAGE_v2ray-geoip
+#           default y if aarch64||arm||i386||loongarch64||riscv64||x86_64
+#
+#   因为本机是 aarch64 且该选项默认 y，Kconfig 的 select 会强制把
+#   mihomo（Clash Meta 内核，约 6-11 MiB）和 v2ray-geoip（geoip 库，约 5 MiB）
+#   编进固件 —— 哪怕我们根本没选 luci-app-ssr-plus。
+#   select 无法用 .config 覆盖（写 is not set 无效），只能直接删掉 feed 里的 select。
+#
+#   安全性：luci-app-homeproxy 的依赖只有 sing-box / firewall4 /
+#           kmod-nft-tproxy / ucode-mod-digest，不含 v2ray-geoip；
+#           homeproxy 运行时用自己下载的 .srs 规则集，不读 /usr/share/v2ray/geoip.dat。
+#           因此删除这两项不影响科学上网功能。
+#
+#   时机：本脚本在 feeds update / install 之后执行，所以 Makefile 必然存在。
+# ============================================================
+echo "[diy-6] 移除 helloworld 源对 mihomo / v2ray-geoip 的强制 select ..."
+SSRPLUS_MK=feeds/helloworld/luci-app-ssr-plus/Makefile
+if [ -f "$SSRPLUS_MK" ]; then
+	sed -i '/^[[:space:]]*select PACKAGE_mihomo[[:space:]]*$/d' "$SSRPLUS_MK" || true
+	sed -i '/^[[:space:]]*select PACKAGE_v2ray-geoip[[:space:]]*$/d' "$SSRPLUS_MK" || true
+	echo "[diy-6] 剩余匹配行数（期望 0）：$(grep -c 'select PACKAGE_mihomo\|select PACKAGE_v2ray-geoip' "$SSRPLUS_MK" || true)"
+	if grep -q 'select PACKAGE_mihomo' "$SSRPLUS_MK"; then
+		echo "[diy-6] !! 警告：仍有 select PACKAGE_mihomo 残留，mihomo 可能仍会被编入，请人工检查"
+	fi
+	if grep -q 'select PACKAGE_v2ray-geoip' "$SSRPLUS_MK"; then
+		echo "[diy-6] !! 警告：仍有 select PACKAGE_v2ray-geoip 残留，请人工检查"
+	fi
+else
+	echo "[diy-6] !! 警告：$SSRPLUS_MK 不存在，mihomo / v2ray-geoip 仍会被编入固件！"
+fi
+
+echo "============================================================"
 echo " diy-part5-6.6.sh 执行完毕"
 echo "============================================================"

@@ -145,17 +145,21 @@ jobs:
         body_path: release.txt
         files: ${{ env.FIRMWARE }}/*
 
-    - name: Delete workflow runs
+    - name: Delete old workflow runs
       uses: Mattraks/delete-workflow-runs@main
       with:
-        retain_days: 0
-        keep_minimum_runs: 2
+        retain_days: 7
+        keep_minimum_runs: 10
 
-    - name: Remove old Releases
-      uses: dev-drprasad/delete-older-releases@master
+    # 只清理本 workflow 自己产出的固件 Release（按 FIRMWARE_TAG 后缀精确匹配）。
+    # 原先的 dev-drprasad/delete-older-releases 用的是 keep_latest（按全仓库 Release 数量计），
+    # 会把其它 Release（例如手动发布的 sing-box-easy ipk）一并删掉，故换成下面的精确过滤。
+    - name: Remove old firmware Releases (仅清理本 workflow 自己的 tag)
       if: env.UPLOAD_RELEASE == 'true' && !cancelled()
-      with:
-        keep_latest: 6
-        delete_tags: true
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        gh release list --limit 200 --json tagName \
+          --jq '.[] | select(.tagName | endswith("-${{ env.FIRMWARE_TAG }}")) | .tagName' \
+          | tail -n +6 \
+          | xargs -r -I{} gh release delete {} --yes --cleanup-tag
